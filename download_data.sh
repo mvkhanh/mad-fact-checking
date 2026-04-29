@@ -16,8 +16,8 @@ if [ ! -f "$BASE_PATH/data_store/averitec/dev.json" ]; then
     wget https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data/dev.json -O $BASE_PATH/data_store/averitec/dev.json
 fi
 
-if [ ! -f "$BASE_PATH/data_store/averitec/test_2025.json" ]; then
-    wget https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data/test_2025.json -O $BASE_PATH/data_store/averitec/test_2025.json
+if [ ! -f "$BASE_PATH/data_store/averitec/test.json" ]; then
+    wget https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data/test.json -O $BASE_PATH/data_store/averitec/test.json
 fi
 
 # For knowledge store - dev set
@@ -29,19 +29,19 @@ if [ ! -d "$BASE_PATH/knowledge_store/dev" ]; then
 fi
 
 # For knowledge store - test set
-if [ ! -d "$BASE_PATH/knowledge_store/test_2025" ]; then
-    # Get list of zip files from the test_2025 directory
-    TEST_FILES=$(curl -s https://huggingface.co/chenxwh/AVeriTeC/tree/main/data_store/knowledge_store/test_2025 | grep -o '/chenxwh/AVeriTeC/resolve/main/[^"]*\.zip' | awk -F'/' '{print $NF}' | sort -u)
+if [ ! -d "$BASE_PATH/knowledge_store/test" ]; then
+    # Get list of zip files from the test directory
+    TEST_FILES=$(curl -s https://huggingface.co/chenxwh/AVeriTeC/tree/main/data_store/knowledge_store/test_updated | grep -o '/chenxwh/AVeriTeC/resolve/main/[^"]*\.zip' | awk -F'/' '{print $NF}' | sort -u)
     echo $TEST_FILES;
 
-    mkdir -p "$BASE_PATH/knowledge_store/test_2025"
+    mkdir -p "$BASE_PATH/knowledge_store/test"
     
     for file in $TEST_FILES; do
         echo "Processing $file"
         filename=$(basename "$file")
-        wget -q "https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data_store/knowledge_store/test_2025/$filename?download=true" \
-            -O "$BASE_PATH/knowledge_store/test_2025/$filename" && \
-        unzip "$BASE_PATH/knowledge_store/test_2025/$filename" -d "$BASE_PATH/knowledge_store/test_2025" && \
-        rm "$BASE_PATH/knowledge_store/test_2025/$filename"
+        wget -q "https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data_store/knowledge_store/test_updated/$filename?download=true" \
+            -O "$BASE_PATH/knowledge_store/test/$filename" --show-progress && \
+        unzip "$BASE_PATH/knowledge_store/test/$filename" -d "$BASE_PATH/knowledge_store/test" && \
+        rm "$BASE_PATH/knowledge_store/test/$filename"
     done
 fi
