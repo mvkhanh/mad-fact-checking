@@ -8,6 +8,13 @@ data_store/
 averitec.tar.gz
 huggingface_cache/
 
+# app/backend runtime artifacts
+app/backend/nltk_data/
+app/backend/tmp_knowledge_store/
+app/backend/tmp_web_cache/
+app/backend/.langgraph_api/
+app/backend/log.json
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

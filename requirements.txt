@@ -1,20 +1,32 @@
-torch==2.4.0
-accelerate==1.1.0
-transformers==4.46.1
-deepspeed==0.15.3
-tokenizers==0.20.2
-datasets==3.1.0
-bitsandbytes==0.44.1
-trl==0.12.0
-nltk==3.9.1
+# LLM / agent runtime
+openai
+langchain-openai
+langgraph-sdk
+python-dotenv
+
+# Retrieval & reranking
 rank_bm25==0.2.2
+sentence_transformers
+huggingface_hub
+
+# Search
+ddgs
+tavily-python
+
+# Web scraping
+curl_cffi
+trafilatura
+
+# NLP utilities
+nltk==3.9.1
 scipy==1.14.1
 scikit-learn==1.5.2
-sentence_transformers
 
-aenum==3.1.15
-google-generativeai==0.8.3
-huggingface_hub
+# Data
 numpy
 pandas
-openai
+aenum==3.1.15
+
+# Misc
+tqdm
+google-generativeai==0.8.3
