@@ -1,0 +1,96 @@
+/* Base markdown styles */
+.markdown-content code:not(pre code) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.markdown-content a {
+  color: #0070f3;
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 1rem;
+  color: #666;
+}
+
+.markdown-content pre {
+  overflow-x: auto;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.markdown-content th {
+  background-color: #f2f2f2;
+}
+
+.markdown-content tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Collapsible evidence items */
+.markdown-content details {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 2px 10px;
+  margin: 3px 0;
+  background: #fafafa;
+  transition: background 0.15s;
+}
+
+.markdown-content details[open] {
+  background: #f0f7ff;
+  border-color: #bfdbfe;
+}
+
+.markdown-content summary {
+  cursor: pointer;
+  padding: 5px 0;
+  list-style: none;
+  user-select: none;
+  font-size: 0.88em;
+  line-height: 1.4;
+}
+
+.markdown-content summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-content summary::before {
+  content: '▶';
+  margin-right: 5px;
+  font-size: 0.7em;
+  color: #94a3b8;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.markdown-content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.markdown-content details > p {
+  margin-top: 6px !important;
+  margin-bottom: 6px !important;
+  font-size: 0.83em;
+  color: #475569;
+  line-height: 1.55;
+  padding-left: 10px;
+  border-left: 3px solid #93c5fd;
+}

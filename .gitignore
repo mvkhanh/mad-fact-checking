@@ -8,6 +8,15 @@ data_store/
 averitec.tar.gz
 huggingface_cache/
 
+# Claude Code artifacts
+.claude/
+
+# app/frontend
+app/frontend/node_modules/
+app/frontend/.next/
+app/frontend/next-env.d.ts
+app/frontend/dist/
+
 # app/backend runtime artifacts
 app/backend/nltk_data/
 app/backend/tmp_knowledge_store/

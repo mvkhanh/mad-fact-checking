@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "fact_check_agent": "./app/core/langgraph/graph.py:graph"
+  },
+  "env": ".env"
+}
