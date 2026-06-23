@@ -38,9 +38,6 @@ class Reranker:
             low_cpu_mem_usage=True
         ).to(self.device)
         self.model.eval()
-        # torch.compile gives 10-30% speedup after the first (compilation) call
-        if hasattr(torch, 'compile'):
-            self.model = torch.compile(self.model)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
@@ -143,8 +140,10 @@ class Reranker:
         try:
             st = time.time()
             query_instruction = "Represent this sentence for searching relevant passages: "
-            query_emb = self.encode([combined_query], instruction=query_instruction)
-            doc_embs = self.encode(sentences)
+            all_texts = [f"{query_instruction}{combined_query}"] + sentences
+            all_embs = self.encode(all_texts)
+            query_emb = all_embs[:1]
+            doc_embs = all_embs[1:]
             scores = np.dot(doc_embs, query_emb.T).flatten()
             top_k_idx = np.argsort(scores)[::-1]
             results = [top_sentences_urls[i] for i in top_k_idx]

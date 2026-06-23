@@ -34,9 +34,9 @@ class RetrievalInput(BaseModel):
     idx: str = Field(description="The ID of the claim to locate the correct knowledge store file.")
     excluded_sentences: Optional[List[str]] = Field(default=[], description="Sentences need to skip")
 
-_kb_reranker = Reranker(model_name=settings.EMBEDDING_MODEL, top_k=settings.TOP_K_RERANKING)
-_web_reranker = Reranker(model_name=settings.DEMO_EMBEDDING_MODEL, top_k=settings.TOP_K_RERANKING, pooling="mean")
-_kb_retriever = BM25Retriever(knowledge_store_path=settings.KNOWLEDGE_STORE_DIR, top_k=settings.TOP_K_RETRIEVAL)
+_kb_reranker = None
+_web_reranker = None
+_kb_retriever = BM25Retriever(knowledge_store_path=settings.KNOWLEDGE_STORE_DIR, top_k=settings.TOP_K_RETRIEVAL, tavily_api_key=settings.TAVILY_API_KEY)
 _web_retriever = WebSearchRetriever(
     top_k=settings.TOP_K_RETRIEVAL,
     max_results=settings.DEMO_TAVILY_MAX_RESULTS,
@@ -44,6 +44,17 @@ _web_retriever = WebSearchRetriever(
     tavily_api_key=settings.TAVILY_API_KEY,
     cache_dir=settings.DEMO_CACHE_DIR,
 )
+
+def _get_reranker(use_web: bool) -> Reranker:
+    global _kb_reranker, _web_reranker
+    if use_web:
+        if _web_reranker is None:
+            _web_reranker = Reranker(model_name=settings.DEMO_EMBEDDING_MODEL, top_k=settings.TOP_K_RERANKING, pooling="mean")
+        return _web_reranker
+    else:
+        if _kb_reranker is None:
+            _kb_reranker = Reranker(model_name=settings.EMBEDDING_MODEL, top_k=settings.TOP_K_RERANKING)
+        return _kb_reranker
 
 class EvidenceRetrievalTool(BaseTool):
     name: str = "evidence_retrieval_tool"
@@ -53,7 +64,7 @@ class EvidenceRetrievalTool(BaseTool):
     def _run(self, fact: str, queries: List[str], idx: str, excluded_sentences: List[str] = []) -> str:
         use_web = not idx
         retriever = _web_retriever if use_web else _kb_retriever
-        reranker = _web_reranker if use_web else _kb_reranker
+        reranker = _get_reranker(use_web)
         top_k_sentence_urls = retriever.query(fact, queries, idx, excluded_sentences)
         if not top_k_sentence_urls:
             return "No evidence found in the knowledge store for this query."

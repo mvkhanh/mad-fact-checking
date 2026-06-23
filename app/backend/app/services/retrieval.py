@@ -5,74 +5,52 @@ import numpy as np
 import pandas as pd
 import nltk
 from rank_bm25 import BM25Okapi
-import asyncio
-import trafilatura
 from pathlib import Path
 
 class BM25Retriever:
-    def __init__(self, knowledge_store_path, top_k):
+    def __init__(self, knowledge_store_path, top_k, tavily_api_key: str = ""):
         self.knowledge_store_path = knowledge_store_path
         self.top_k = top_k
-
-    async def _scrape_missing_urls(self, urls):
-        # Import inside the method or at the top of your script
-        from curl_cffi.requests import AsyncSession
-
-        async def fetch_and_extract(url, session):
-            try:
-                # 'impersonate' automatically mimics Chrome's headers, TLS fingerprint, and compression profiles
-                response = await session.get(url, timeout=25, impersonate="chrome")
-                
-                if response.status_code == 200:
-                    # response.content returns raw bytes, which goes into trafilatura
-                    extracted_text = trafilatura.extract(response.content)
-                    return url, extracted_text
-                else:
-                    print(f"  [!] HTTP {response.status_code} blocker encountered on: {url}")
-            except Exception as e:
-                print(f"  [!] Error scraping URL {url}: {str(e)}")
-            return url, None
-
-        # Use curl_cffi's AsyncSession loop context
-        async with AsyncSession() as session:
-            tasks = [fetch_and_extract(url, session) for url in urls]
-            return await asyncio.gather(*tasks)
+        self.tavily_api_key = tavily_api_key
 
     def _get_cached_or_scrape(self, idx, split, missing_urls):
         tmp_dir = Path("tmp_knowledge_store") / split
         tmp_dir.mkdir(parents=True, exist_ok=True)
         cache_file = tmp_dir / f"{idx}.json"
-        
+
         if cache_file.exists():
             with open(cache_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-                
-        print(f"[*] Claim {idx} ({split}): Scraping {len(missing_urls)} missing URLs...")
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+
+        if not self.tavily_api_key:
+            return {}
+
+        print(f"[*] Claim {idx} ({split}): Extracting {len(missing_urls)} missing URLs via Tavily...")
+        from tavily import TavilyClient
+        client = TavilyClient(api_key=self.tavily_api_key)
         try:
-            scraped_results = loop.run_until_complete(self._scrape_missing_urls(missing_urls))
-        finally:
-            loop.close()
-        
+            results = client.extract(urls=missing_urls).get("results", [])
+        except Exception as e:
+            print(f"  [!] Tavily extract error: {e}")
+            results = []
+
         scraped_data = {}
-        for url, text in scraped_results:
-            if text:
-                import re
-                flat_text = re.sub(r'\s+', ' ', text).strip()                
+        for r in results:
+            url = r.get("url", "")
+            content = r.get("raw_content", "")
+            if url and content:
+                flat_text = re.sub(r'\s+', ' ', content).strip()
                 raw_sentences = nltk.sent_tokenize(flat_text)
-                clean_sentences = [
-                    s.strip() for s in raw_sentences 
+                scraped_data[url] = [
+                    s.strip() for s in raw_sentences
                     if len(s.strip()) > 15 and re.search(r'[a-zA-Z]', s)
                 ]
-                
-                scraped_data[url] = clean_sentences
-            else:
+            elif url:
                 scraped_data[url] = []
-                
+
         with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(scraped_data, f, ensure_ascii=False, indent=2)
-            
+
         return scraped_data
 
     def combine_all_sentences(self, knowledge_file, idx, split, exclude_sentences=None):
