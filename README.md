@@ -73,6 +73,7 @@ TOP_K_RERANKING=10
 
 ```bash
 cd app/frontend
+npm install -g pnpm
 pnpm install
 ```
 
