@@ -38,7 +38,10 @@ class Reranker:
             low_cpu_mem_usage=True
         ).to(self.device)
         self.model.eval()
-        
+        # torch.compile gives 10-30% speedup after the first (compilation) call
+        if hasattr(torch, 'compile'):
+            self.model = torch.compile(self.model)
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
         self.top_k = top_k
@@ -52,19 +55,22 @@ class Reranker:
             
         all_embeddings = []
         
-        with torch.no_grad():
+        with torch.inference_mode():
             for i in tqdm(range(0, len(texts), self.batch_size), desc="Encoding", leave=False):
                 batch = texts[i:i + self.batch_size]
                 inputs = self.tokenizer(
-                    batch, 
-                    padding=True, 
-                    truncation=True, 
-                    max_length=512, 
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
                     return_tensors='pt'
                 ).to(self.device)
-                
+
                 if self.device == 'cuda':
                     with torch.autocast(device_type='cuda', dtype=self.dtype):
+                        outputs = self.model(**inputs)
+                elif self.device == 'mps':
+                    with torch.autocast(device_type='mps', dtype=self.dtype):
                         outputs = self.model(**inputs)
                 else:
                     outputs = self.model(**inputs)

@@ -14,7 +14,7 @@ Verdicts follow the AVeriTeC schema: `Supported`, `Refuted`, `Not Enough Evidenc
 ## Project structure
 
 ```
-FEVER-8-Shared-Task/
+mad_fact_checking/
 ├── app/
 │   ├── backend/             # LangGraph agent server (Python)
 │   │   ├── app/
