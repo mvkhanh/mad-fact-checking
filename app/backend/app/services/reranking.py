@@ -35,7 +35,8 @@ class Reranker:
         self.model = AutoModel.from_pretrained(
             self.model_name,
             torch_dtype=self.dtype,
-            low_cpu_mem_usage=True
+            low_cpu_mem_usage=True,
+            trust_remote_code=True
         ).to(self.device)
         self.model.eval()
 
@@ -45,13 +46,25 @@ class Reranker:
         self.batch_size = batch_size
         self.pooling = pooling  # 'cls' or 'mean'
 
+        # Instruction prefixes vary by model family
+        if "multilingual-e5" in model_name or "e5-" in model_name:
+            self.query_prefix = "query: "
+            self.doc_prefix = "passage: "
+        elif "bge" in model_name.lower():
+            self.query_prefix = "Represent this sentence for searching relevant passages: "
+            self.doc_prefix = ""
+        else:
+            self.query_prefix = ""
+            self.doc_prefix = ""
+
     def encode(self, texts: list[str], instruction: str = "") -> np.ndarray:
-        """Generate embeddings for doc list"""
+        """Generate embeddings for doc list."""
         if instruction:
             texts = [f"{instruction}{t}" for t in texts]
-            
+
+        model_max_len = min(512, getattr(self.tokenizer, 'model_max_length', 512))
         all_embeddings = []
-        
+        print('Start Inference')
         with torch.inference_mode():
             for i in tqdm(range(0, len(texts), self.batch_size), desc="Encoding", leave=False):
                 batch = texts[i:i + self.batch_size]
@@ -59,7 +72,7 @@ class Reranker:
                     batch,
                     padding=True,
                     truncation=True,
-                    max_length=512,
+                    max_length=model_max_len,
                     return_tensors='pt'
                 ).to(self.device)
 
@@ -71,7 +84,7 @@ class Reranker:
                         outputs = self.model(**inputs)
                 else:
                     outputs = self.model(**inputs)
-                
+
                 if self.pooling == "mean":
                     mask = inputs["attention_mask"].unsqueeze(-1).float()
                     embeddings = (outputs.last_hidden_state * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
@@ -79,11 +92,12 @@ class Reranker:
                     embeddings = outputs.last_hidden_state[:, 0, :]
                 embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
                 all_embeddings.append(embeddings.cpu().numpy())
-                
+
                 if i > 0 and i % (self.batch_size * 4) == 0:
                     if self.device == 'cuda': torch.cuda.empty_cache()
                     elif self.device == 'mps': torch.mps.empty_cache()
                     gc.collect()
+        print('End Inference')
 
         return np.vstack(all_embeddings)
 
@@ -139,14 +153,15 @@ class Reranker:
 
         try:
             st = time.time()
-            query_instruction = "Represent this sentence for searching relevant passages: "
-            all_texts = [f"{query_instruction}{combined_query}"] + sentences
-            all_embs = self.encode(all_texts)
+            query_texts = [f"{self.query_prefix}{combined_query}"]
+            doc_texts = [f"{self.doc_prefix}{s}" for s in sentences]
+            all_embs = self.encode(query_texts + doc_texts)
             query_emb = all_embs[:1]
             doc_embs = all_embs[1:]
             scores = np.dot(doc_embs, query_emb.T).flatten()
             top_k_idx = np.argsort(scores)[::-1]
             results = [top_sentences_urls[i] for i in top_k_idx]
+            print(f'Embed time: {time.time() - st}')
             final_top_k_sentences_urls = self.select_top_k(fact, results)
             print(f"Top {len(final_top_k_sentences_urls)} retrieved via Bi-Encoder. Time elapsed: {time.time() - st:.2f}s")
             return final_top_k_sentences_urls

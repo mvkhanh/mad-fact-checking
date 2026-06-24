@@ -1,3 +1,4 @@
+import time
 import json
 import os
 import re
@@ -23,6 +24,7 @@ class BM25Retriever:
                 return json.load(f)
 
         if not self.tavily_api_key:
+            print('Missing Tavily API key!')
             return {}
 
         print(f"[*] Claim {idx} ({split}): Extracting {len(missing_urls)} missing URLs via Tavily...")
@@ -74,8 +76,11 @@ class BM25Retriever:
 
         chunks, urls = [], []
         exclude_set = set(exclude_sentences) if exclude_sentences else set()
-        
+        max_chunks = 5000
+
         for data in items:
+            if len(chunks) >= max_chunks:
+                break
             url_sentences = data.get("url2text", [])
             n = len(url_sentences)
             for j in range(0, n, 3):
@@ -86,7 +91,9 @@ class BM25Retriever:
                 if chunk and chunk not in exclude_set:
                     chunks.append(chunk)
                     urls.append(data.get("url"))
-                    
+                    if len(chunks) >= max_chunks:
+                        break
+
         return chunks, urls, len(items)
 
     def remove_duplicates(self, sentences, urls):
@@ -98,7 +105,7 @@ class BM25Retriever:
     def retrieve_top_k_sentences(self, query, document, urls, max_sentences_per_url=2):
         if not document: return [], []
             
-        tokenized_docs = [nltk.word_tokenize(doc) for doc in document[:20000]]
+        tokenized_docs = [nltk.word_tokenize(doc) for doc in document]
         bm25 = BM25Okapi(tokenized_docs)
         scores = bm25.get_scores(nltk.word_tokenize(query))
         sorted_indices = np.argsort(scores)[::-1]
@@ -118,19 +125,22 @@ class BM25Retriever:
 
     def query(self, fact, queries, idx, exclude_sentences=None):
         try:
+            print('Start retrieval')
+            st = time.time()
             split = 'dev' if 'dev' in self.knowledge_store_path else 'test'
             knowledge_file_path = os.path.join(self.knowledge_store_path, f"{idx}.json")
             document_in_sentences, sentence_urls, num_urls_this_claim = self.combine_all_sentences(
                 knowledge_file_path, idx, split, exclude_sentences
             )
-            
+            print(f'Combine sentences times: {time.time() - st}')
             if not document_in_sentences: return []
                 
             document_in_sentences, sentence_urls = self.remove_duplicates(document_in_sentences, sentence_urls)
             query_str = fact + " " + " ".join(queries)
-            
+            print(f'Remove duplicates times: {time.time() - st}')
             top_k_sentences, top_k_urls = self.retrieve_top_k_sentences(query_str, document_in_sentences, sentence_urls)
-            
+            print(f'Retrieve top k times: {time.time() - st}')
+            print('End retrieveal')
             return [{"sentence": re.sub(r'^Pingback:\s*', '', s, flags=re.IGNORECASE).strip(), "url": u} 
                     for s, u in zip(top_k_sentences, top_k_urls)] 
         except Exception as e:

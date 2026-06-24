@@ -30,8 +30,6 @@ class Settings:
         self.TOP_K_RERANKING = int(os.getenv("TOP_K_RERANKING", 10))
         self.MAX_ROUND_DEBATE = int(os.getenv("MAX_ROUND_DEBATE", 3))
         self.DEMO_CACHE_DIR = os.getenv("DEMO_CACHE_DIR", "tmp_web_cache")
-        self.DEMO_DDG_RESULTS_PER_QUERY = int(os.getenv("DEMO_DDG_RESULTS_PER_QUERY", "20"))
-        self.DEMO_DDG_SLEEP_SECONDS = float(os.getenv("DEMO_DDG_SLEEP_SECONDS", "1.5"))
         self.DEMO_EMBEDDING_MODEL = os.getenv("DEMO_EMBEDDING_MODEL", "dangvantuan/vietnamese-document-embedding")
         self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
         self.DEMO_TAVILY_MAX_RESULTS = int(os.getenv("DEMO_TAVILY_MAX_RESULTS", "7"))

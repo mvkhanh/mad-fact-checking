@@ -3,7 +3,7 @@ import re
 import nltk
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple
-
+import time
 try:
     from tavily import TavilyClient
 except ImportError:
@@ -46,12 +46,15 @@ class WebSearchRetriever:
         exclude_sentences: Optional[List[str]] = None,
     ) -> List[Dict]:
         try:
+            print('Start Web Search')
+            st = time.time()
             search_terms = list(dict.fromkeys([fact] + queries))  # deduped, order preserved
 
             # 1. Load cache; search Tavily only for URLs not already cached
             cached = self._load_cache(idx)
+            print(f'Load cache time: {time.time() - st}')
             new_results = self._tavily_search(search_terms, cached_urls=set(cached.keys()))
-
+            print(f'Tavily search time: {time.time() - st}')
             # 2. Merge and persist
             merged = {**cached, **new_results}
             self._save_cache(idx, merged)
@@ -59,7 +62,7 @@ class WebSearchRetriever:
             # 3. Build sliding-window chunks
             exclude_set = set(exclude_sentences) if exclude_sentences else set()
             chunks, chunk_urls = self._build_corpus(merged, exclude_set)
-
+            print(f'CHunking time: {time.time() - st}')
             if not chunks:
                 return []
 
@@ -67,9 +70,10 @@ class WebSearchRetriever:
             from app.services.retrieval import BM25Retriever
             _bm25 = BM25Retriever(knowledge_store_path="", top_k=self.top_k)
             chunks, chunk_urls = _bm25.remove_duplicates(chunks, chunk_urls)
-
+            print(f'Remove dup time: {time.time() - st}')
             query_str = fact + " " + " ".join(queries)
             top_sentences, top_urls = _bm25.retrieve_top_k_sentences(query_str, chunks, chunk_urls)
+            print(f'Retrieve top k time: {time.time() - st}')
 
             return [
                 {"sentence": re.sub(r'^Pingback:\s*', '', s, flags=re.IGNORECASE).strip(), "url": u}
@@ -157,7 +161,10 @@ class WebSearchRetriever:
     ) -> Tuple[List[str], List[str]]:
         """Sliding window (5 sentences, stride 3) over each URL's sentence list."""
         chunks, urls = [], []
+        max_chunks = 5000
         for url, sentences in url_to_sentences.items():
+            if len(chunks) >= max_chunks:
+                break
             n = len(sentences)
             for j in range(0, n, 3):
                 parts = [sentences[k].strip() for k in range(j, min(j + 5, n)) if sentences[k].strip()]
@@ -165,4 +172,6 @@ class WebSearchRetriever:
                 if chunk and chunk not in exclude_set:
                     chunks.append(chunk)
                     urls.append(url)
+                    if len(chunks) >= max_chunks:
+                        break
         return chunks, urls

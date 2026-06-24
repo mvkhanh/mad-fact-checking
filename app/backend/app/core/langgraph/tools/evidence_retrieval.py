@@ -70,16 +70,6 @@ class EvidenceRetrievalTool(BaseTool):
             return "No evidence found in the knowledge store for this query."
         top_k_sentence_urls = reranker.rerank(fact, queries, top_k_sentence_urls, idx)
         formatted_result = json.dumps(top_k_sentence_urls, ensure_ascii=False, indent=2)
-        try:
-            log_entry = {
-                "fact": fact,
-                "queries": queries,
-                "top_k_sentence_urls": formatted_result
-            }
-            with open("log.json", "a", encoding="utf-8") as log_file:
-                log_file.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-        except Exception as e:
-            print(f"Warning: Failed to write to log.json: {e}")
         return formatted_result
 
 evidence_retrieval_tool = EvidenceRetrievalTool()
